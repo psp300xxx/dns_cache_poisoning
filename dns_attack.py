@@ -26,6 +26,7 @@ local_ip = "127.0.0.1"
 dns_to_attack_port = 53
 udp_listen_port = 1337
 buffer_size = 1024
+
 query_name = "badguy.ru"
 #variable to sync threads
 is_finished = [False]
