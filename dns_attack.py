@@ -1,6 +1,8 @@
 import os
 os.sys.path.append('/usr/bin/')
-from scapy.all import DNS, DNSQR, IP, sr1, UDP, sniff,DNSRR, Raw, send
+# from scapy.layers.inet import  IP, sr1, UDP
+from scapy.layers.dns import *
+from scapy.all import sr1, send, sniff, Raw
 import socket
 import threading
 import time
